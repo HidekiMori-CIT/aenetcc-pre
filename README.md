@@ -15,7 +15,7 @@ tar -xvzf stable_23Jun2022.tar.gz
 
 3. Copy USER-ML-AENET-CC/ in lammps-extend/ to lammps-stable_2Aug2023/src/ and complie LAMMPS with aenet-cc module.
 ```
-cp -r ./aenet-lammps-cc/USER-ML-AENET-CC/ ./lammps-stable_2Aug2023/src/  
+cp -r ./aenetcc-pre/USER-ML-AENET-CC/ ./lammps-stable_2Aug2023/src/  
 cd ./lammps-stable_2Aug2023/src/  
 make yes-user-ml-aenet-cc
 make mpi
