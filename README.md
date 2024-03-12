@@ -21,3 +21,7 @@ make yes-user-ml-aenet-cc
 make mpi
 ```
 _note_: If you use intel compiler, replace mpi to icc_openmpi. Other compile option of LAMMPS, please see LAMMPS manual.
+
+# Citing of this package and ANN potential
+[1] H. Mori and T. Ozaki, Phys. Rev. Mater., **4**, 040601 (2020).  
+[2] H. Mori, _et. al._, Phys. Rev. Matter., **7**, 063605 (2023).
