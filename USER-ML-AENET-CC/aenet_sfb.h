@@ -221,26 +221,25 @@ class AENET_SFB{
     double *dGrdxj = new double [nGr*3]{};
     double *dGadxj = new double [nGa*3]{};
     double *dGadxk = new double [nGa*3]{};
-    
-    double fcj,dfcj,fck,dfck;
-    double xj[3], xk[3], dr_dxj[3], dr_dxk[3], dcos_dxj[3], dcos_dxk[3];
-    
-    
+   
+
     //j-loop start
     for (int j = 0; j < jnum; j++){
       
+      double xj[3], dr_dxj[3];
+
       double *x_j = &x[3*j];
       for(int i = 0; i < 3; i++)xj[i] = x_j[i];
       double rsqj = rsq[j];
       double rj = sqrt(rsqj);
+      double rinvj = 1.0/rj;
+      for(int i = 0; i < 3; i++) dr_dxj[i] = xj[i]*rinvj;
       
       if (rsqj <= Rc_r_sq){
         
         compute_sfb_rad(rj, Rc_r, nGr, Gr, dGdr);
+        double fcj,dfcj;
         f_c(fctype_r, rj, Rc_r, h_r, fcj, dfcj);
-              
-        double rinvj = 1.0/rj;
-        for(int i = 0; i < 3; i++) dr_dxj[i] = xj[i]*rinvj;
         
         for (int n = 0; n < nGr; n++){
           double dGdfc = fcj*dGdr[n] + dfcj*Gr[n];
@@ -281,6 +280,8 @@ class AENET_SFB{
         double rsqk = rsq[k];
         if (rsqk > Rc_a_sq)continue;
         
+        double xk[3], dr_dxk[3], dcos_dxj[3], dcos_dxk[3];
+
         double *x_k = &x[3*k];
         for(int i = 0; i < 3; i++) xk[i] = x_k[i];
         
@@ -289,6 +290,7 @@ class AENET_SFB{
         double cos_jk = (xj[0]*xk[0] + xj[1]*xk[1] + xj[2]*xk[2]) * rinvjk;
         
         compute_sfb_ang(aenet_ver,cos_jk, nGa, Ga, dGdcos);
+        double fcj,dfcj,fck,dfck;
         f_c(fctype_a, rj, Rc_a, h_a, fcj, dfcj);
         f_c(fctype_a, rk, Rc_a, h_a, fck, dfck);
                 
