@@ -17,6 +17,8 @@ class PairAENETCC : public Pair {
  private:
    AENET_POT *aenet_pot;
    void load_pot_file(int, int, std::string, int, char**);
+
+   double Rc_max_sq;
    
  public:
   PairAENETCC(class LAMMPS *);

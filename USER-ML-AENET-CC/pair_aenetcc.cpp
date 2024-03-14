@@ -103,15 +103,21 @@ void PairAENETCC::compute(int eflag, int vflag)
       int j = jlist[jj];
       j &= NEIGHMASK;
       
-      int jtype = map[type[j]];
+      double xx[3];
+      double rr = 0.0;
+
+      for (int k = 0; k < 3; k++)xx[k] = x[j][k] - x[i][k];
+      for (int k = 0; k < 3; k++)rr   += xx[k]*xx[k];
+
+      if(rr > Rc_max_sq)continue;
       
       indx_j[num_j] = j;
-      type_j[num_j] = jtype;
+      type_j[num_j] = map[type[j]];
       
       double *xj = &x_j[num_j*3];
-      
-      for (int kk = 0; kk < 3; kk++)xj[kk] = x[j][kk] - x[i][kk];
-      for (int kk = 0; kk < 3; kk++)rsq_j[num_j] += xj[kk]*xj[kk];
+      for (int k = 0; k < 3; k++)xj[k] = xx[k];
+
+      rsq_j[num_j]  = rr;
       
       num_j = num_j + 1;
       
@@ -307,6 +313,8 @@ double PairAENETCC::init_one(int /*i*/, int /*j*/)
       Rc_max = aenet_pot[i].get_Rc_max();
     }
   }
+
+  Rc_max_sq = Rc_max*Rc_max;
 
   return Rc_max;
 }

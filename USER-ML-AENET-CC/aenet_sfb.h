@@ -229,48 +229,50 @@ class AENET_SFB{
     //j-loop start
     for (int j = 0; j < jnum; j++){
       
-      double rsqj = rsq[j];
-      if (rsqj > Rc_r_sq)continue;
-      
       double *x_j = &x[3*j];
       for(int i = 0; i < 3; i++)xj[i] = x_j[i];
+      double rsqj = rsq[j];
+      double rj = sqrt(rsqj);
       
-      double rj = sqrt(rsqj);      
-      compute_sfb_rad(rj, Rc_r, nGr, Gr, dGdr);
-      f_c(fctype_r, rj, Rc_r, h_r, fcj, dfcj);
-            
-      double rinvj = 1.0/rj;
-      for(int i = 0; i < 3; i++) dr_dxj[i] = xj[i]*rinvj;
-      
-      for (int n = 0; n < nGr; n++){
-        double dGdfc = fcj*dGdr[n] + dfcj*Gr[n];
-        double *dGrdx_j = &dGrdxj[n*3];
-        for(int i = 0; i < 3; i++) dGrdx_j[i] = dGdfc*dr_dxj[i];
-      }
-      
-      int nstart = 0;
-      
-      double *Gj = &Gall[nstart];
-      for (int n = 0; n < nGr; n++) Gj[n] += fcj*Gr[n];
-      
-      double *dGdxj = &dGdx[(j*nGtot + nstart)*3];
-      for(int ni = 0; ni < nGr*3; ni++)dGdxj[ni] += dGrdxj[ni];
-      
-      if (multi) if(env_map[type[j]] >= 0){
-                
-        int jspin = spin[env_map[type[j]]];
-        double sfcj = jspin*fcj;
+      if (rsqj <= Rc_r_sq){
         
-        int nstart = nGr+nGa;
+        compute_sfb_rad(rj, Rc_r, nGr, Gr, dGdr);
+        f_c(fctype_r, rj, Rc_r, h_r, fcj, dfcj);
+              
+        double rinvj = 1.0/rj;
+        for(int i = 0; i < 3; i++) dr_dxj[i] = xj[i]*rinvj;
+        
+        for (int n = 0; n < nGr; n++){
+          double dGdfc = fcj*dGdr[n] + dfcj*Gr[n];
+          double *dGrdx_j = &dGrdxj[n*3];
+          for(int i = 0; i < 3; i++) dGrdx_j[i] = dGdfc*dr_dxj[i];
+        }
+        
+        int nstart = 0;
         
         double *Gj = &Gall[nstart];
-        for (int n = 0; n < nGr; n++) Gj[n] += sfcj*Gr[n];
+        for (int n = 0; n < nGr; n++) Gj[n] += fcj*Gr[n];
         
         double *dGdxj = &dGdx[(j*nGtot + nstart)*3];
-        for(int ni = 0; ni < nGr*3; ni++)dGdxj[ni] += jspin*dGrdxj[ni];
+        for(int ni = 0; ni < nGr*3; ni++)dGdxj[ni] += dGrdxj[ni];
+        
+        if (multi) if(env_map[type[j]] >= 0){
+                  
+          int jspin = spin[env_map[type[j]]];
+          double sfcj = jspin*fcj;
+          
+          int nstart = nGr+nGa;
+          
+          double *Gj = &Gall[nstart];
+          for (int n = 0; n < nGr; n++) Gj[n] += sfcj*Gr[n];
+          
+          double *dGdxj = &dGdx[(j*nGtot + nstart)*3];
+          for(int ni = 0; ni < nGr*3; ni++)dGdxj[ni] += jspin*dGrdxj[ni];
+          
+        }
         
       }
-      
+
       if (rsqj > Rc_a_sq)continue;
       
       //k-loop start 
