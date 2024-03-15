@@ -280,13 +280,15 @@ class AENET_SFB{
         double rsqk = rsq[k];
         if (rsqk > Rc_a_sq)continue;
         
-        double xk[3], dr_dxk[3], dcos_dxj[3], dcos_dxk[3];
+        double xk[3], dr_dxk[3];
 
         double *x_k = &x[3*k];
         for(int i = 0; i < 3; i++) xk[i] = x_k[i];
-        
         double rk = sqrt(rsqk);
-        double rinvjk = 1.0/(rj*rk);
+        double rinvk = 1.0/rk;
+        for(int i = 0; i < 3; i++) dr_dxk[i] = xk[i]*rinvk;
+
+        double rinvjk = rinvj*rinvk;
         double cos_jk = (xj[0]*xk[0] + xj[1]*xk[1] + xj[2]*xk[2]) * rinvjk;
         
         compute_sfb_ang(aenet_ver,cos_jk, nGa, Ga, dGdcos);
@@ -296,9 +298,7 @@ class AENET_SFB{
                 
         double fcjk = fcj*fck;
         
-        double rinvk = 1.0/rk;
-        for(int i = 0; i < 3; i++) dr_dxk[i] = xk[i]*rinvk;
-        
+        double dcos_dxj[3], dcos_dxk[3];
         double rinvsqj = 1.0/rsqj;
         double rinvsqk = 1.0/rsqk;
         for(int i = 0; i < 3; i++) dcos_dxj[i] = -cos_jk*xj[i]*rinvsqj + xk[i]*rinvjk;
