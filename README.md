@@ -1,5 +1,5 @@
 # Update
-2024/03/16: Update pair_aenetcc.cpp and aenet_sfb.h.  
+2024/03/16: Update pair_aenetcc.* and aenet_sfb.h.  
 
 # Installation
 0. This manual explains only clean install case using gnu g++, gfortran, and openmpi under linux OS.
