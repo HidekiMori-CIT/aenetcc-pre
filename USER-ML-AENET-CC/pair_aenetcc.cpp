@@ -366,6 +366,7 @@ void PairAENETCC::load_pot_file(int aenet_version, int itype, std::string file_n
     if (comm->me == 0) {
 
       std::ifstream fin(file_name, std::ios::in | std::ios::binary );
+      if( !fin ) error->all(FLERR,"aenet/cc: parameter file does not exist");
 
       nlayers     = read_Fbinary<int>(fin);
       nnodes_max  = read_Fbinary<int>(fin);
