@@ -15,27 +15,24 @@ namespace LAMMPS_NS {
 
 class PairAENETCC : public Pair {
  private:
-   AENET_POT *aenet_pot;
+   AENET_POT *aenet_pot = nullptr;
    void load_pot_file(int, int, std::string, int, char**);
-
    double Rc_max_sq;
+   
+   bool Eshifted_on = false;
+   bool Alchemic_on = false;
    
  public:
   PairAENETCC(class LAMMPS *);
-  ~PairAENETCC();
-  void compute(int, int);
-  void settings(int, char **);
-  void coeff(int, char **);
-  void init_style();
-  double init_one(int, int);
+  ~PairAENETCC() override;
+  void compute(int, int) override;
+  void settings(int, char **) override;
+  void coeff(int, char **) override;
+  void init_style() override;
+  double init_one(int, int) override;
 
  protected:
   virtual void allocate();
-  double cutmax;                // max cutoff for all elements
-  int nelements;                // # of unique elements
-  char **elements;              // names of unique elements
-
-  int *map;                     // mapping from atom types to elements
 
 };
 

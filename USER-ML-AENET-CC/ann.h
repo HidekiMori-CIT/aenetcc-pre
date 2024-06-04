@@ -7,18 +7,22 @@
 class ANN {
   
   int nlayers;
-  int *activation_ftype;
-  int *nnodes;
-  double *Wb;
-  double *TW;
+  int *activation_ftype = nullptr;
+  int *nnodes = nullptr;
+  double *Wb = nullptr;
+  double *TW = nullptr;
   int Wb_size = 0;
   int TW_size = 0;
   int nn_input;
   
-  double *Gscale;
-  double *Gshift;
+  double *Gscale = nullptr;
+  double *Gshift = nullptr;
   
-  double **nodes, **dnodes, **bnodes;
+  double **nodes  = nullptr;
+  double **dnodes = nullptr;
+  double **bnodes = nullptr;
+
+  bool allocated = false;
 
   double activation(int f_a, double x, double &deriv)
   {
@@ -76,24 +80,28 @@ class ANN {
   public:
   
   ~ANN(){
-    
-    delete [] activation_ftype;
-    delete [] nnodes;
-    delete [] Wb;
-    delete [] TW;
-    
-    for (int n = 0; n < nlayers; n++) {
-     delete [] nodes[n];
-     delete [] dnodes[n];
-     delete [] bnodes[n];
+  
+    if (allocated){ 
+
+      delete [] activation_ftype;
+      delete [] nnodes;
+      delete [] Wb;
+      delete [] TW;
+      
+      for (int n = 0; n < nlayers; n++) {
+       delete [] nodes[n];
+       delete [] dnodes[n];
+       delete [] bnodes[n];
+      }
+      
+      delete [] nodes;
+      delete [] dnodes;
+      delete [] bnodes;
+      
+      delete [] Gscale;
+      delete [] Gshift;
+
     }
-    
-    delete [] nodes;
-    delete [] dnodes;
-    delete [] bnodes;
-    
-    delete [] Gscale;
-    delete [] Gshift;
     
   }
  
@@ -181,6 +189,8 @@ class ANN {
       bnodes[l] = new double [nnodes[l]];
     }
     
+   allocated = true;
+
     Wb_size = 0;
     TW_size = 0;
     for (int l = 0; l < nlayers; l++){

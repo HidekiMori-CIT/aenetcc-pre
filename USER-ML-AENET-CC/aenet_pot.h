@@ -34,12 +34,15 @@ class AENET_POT {
   ANN net;
   AENET_SFB sfb;
   
+  bool skip_flag = false;
+
   public:
   
-  ~AENET_POT(){
-
-  }
+  ~AENET_POT(){}
   
+  void skip_flag_on(){skip_flag = true;}
+  bool skip(){return skip_flag;}
+
   void  set_pot(
     int aenet_version,
     std::vector<char> atomtype,

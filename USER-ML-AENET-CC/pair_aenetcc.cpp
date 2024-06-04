@@ -33,9 +33,6 @@ PairAENETCC::PairAENETCC(LAMMPS *lmp) : Pair(lmp)
   manybody_flag = 1;
   centroidstressflag = CENTROID_NOTAVAIL;
 
-  nelements = 0;
-  elements = NULL;
-
 }
 
 /* ----------------------------------------------------------------------
@@ -50,13 +47,10 @@ PairAENETCC::~PairAENETCC()
   char Error_message[256];
 
   delete [] aenet_pot;
-  for (i = 0; i < nelements; i++) delete [] elements[i];
-  delete [] elements;
 
   if (allocated) {
     memory->destroy(setflag);
     memory->destroy(cutsq);
-    memory->destroy(map);
   }
 }
 
@@ -88,6 +82,8 @@ void PairAENETCC::compute(int eflag, int vflag)
     int i      = ilist[ii];
     int itype  = map[type[i]];
     
+    if(aenet_pot[itype].skip())continue;
+
     int   jnum = numneigh[i];
     int *jlist = firstneigh[i]; 
     
@@ -128,6 +124,7 @@ void PairAENETCC::compute(int eflag, int vflag)
     
     aenet_pot[itype].compute(num_j, x_j, rsq_j, type_j, E_i, f_j);
     double Einf = aenet_pot[itype].get_Einf();
+    if(Eshifted_on)E_i -= Einf;
     
     if (eflag) {
       if (eflag_global) eng_vdwl += E_i;
@@ -172,7 +169,7 @@ void PairAENETCC::allocate()
 
   memory->create(setflag,n+1,n+1,"pair:setflag");
   memory->create(cutsq,n+1,n+1,"pair:cutsq");
-  memory->create(map,n+1,"pair:map");
+  map = new int[n+1];
 
 }
 
@@ -180,9 +177,19 @@ void PairAENETCC::allocate()
    global settings
 ------------------------------------------------------------------------- */
 
-void PairAENETCC::settings(int narg, char **/*arg*/)
+void PairAENETCC::settings(int narg, char **arg)
 {
-  if (narg != 0) error->all(FLERR,"Illegal pair_style command");
+  if (narg == 0){}
+  else if (narg == 1 ) {
+    if (strcmp(arg[0],"Eshifted") == 0){Eshifted_on  = true;}
+    if (strcmp(arg[0],"Alchemic") == 0){Alchemic_on  = true;}
+  } else if (narg == 2 ) {
+    if (strcmp(arg[0],"Eshifted") == 0){Eshifted_on  = true;}
+    else if (strcmp(arg[0],"Alchemic") == 0){Alchemic_on  = true;}
+    if (strcmp(arg[1],"Eshifted") == 0){Eshifted_on  = true;}
+    else if (strcmp(arg[1],"Alchemic") == 0){Alchemic_on  = true;}
+  }
+  else error->all(FLERR,"Illegal pair_style command");
 }
 
 /* ----------------------------------------------------------------------
@@ -191,16 +198,8 @@ void PairAENETCC::settings(int narg, char **/*arg*/)
 
 void PairAENETCC::coeff(int narg, char **arg)
 {
-  int i,j,m,n;
-  int stat;
-  int itype;
-  char netFile[128];
-  char Error_message[256];
 
-  std::string wc = "**";
-  int len = wc.length();
-
-  if (narg < 6) error->all(FLERR,"Incorrect args for pair coefficients");
+  if (narg < 5) error->all(FLERR,"Incorrect args for pair coefficients");
   if (!allocated) allocate();
 
   // insure I,J args are * *
@@ -208,71 +207,78 @@ void PairAENETCC::coeff(int narg, char **arg)
   if (strcmp(arg[0],"*") != 0 || strcmp(arg[1],"*") != 0)
     error->all(FLERR,"Incorrect args for pair coefficients");
 
-  // read ANN element names between 2 filenames
-  // nelements = # of ANN elements
-  // elements = list of unique element names
+  int aenet_version = atoi(std::string(arg[2]).substr(1,2).c_str());
 
   if (nelements) {
-    for (i = 0; i < nelements; i++) delete [] elements[i];
+    for (int i = 0; i < nelements; i++) delete [] elements[i];
     delete [] elements;
   }
+
   nelements = narg - 4 - atom->ntypes;
-  if (nelements < 1) error->all(FLERR,"Incorrect args for pair coefficients");
-  elements = new char*[nelements];
+  if (nelements < 0) error->all(FLERR,"Incorrect args for pair coefficients");
+
+  std::string file_mask;
+
+  if (nelements == 0) {
+
+    map_element2type(narg-4,arg+4);
+    file_mask = std::string(arg[3]);
+
+  } else {
+
+    const int ntypes  = atom->ntypes;
+    elements = new char*[ntypes];
+    for (int i = 0; i < ntypes; i++) elements[i] = nullptr;
+  
+    for (int i = 0; i < nelements; i++) {
+      std::string entry = arg[i+3];
+      elements[i] = utils::strdup(entry);
+    }
+
+    // read args that map atom types to ANN elements
+    // map[i] = which element the Ith atom type is, -1 if not mapped
+  
+    for (int i = 4 + nelements; i < narg; i++) {
+      int m = i - (4+nelements) + 1;
+      int j;
+      for (j = 0; j < nelements; j++)
+        if (strcmp(arg[i],elements[j]) == 0) break;
+      if (j < nelements) map[m] = j;
+      else if (strcmp(arg[i],"NULL") == 0) map[m] = -1;
+      else error->all(FLERR,"Incorrect args for pair coefficients");
+    }
+
+    file_mask = std::string(arg[3+nelements]);
+
+    // clear setflag since coeff() called once with I,J = * *
+    // set setflag i,j for type pairs where both are mapped to elements
+    int count = 0;
+    for (int i = 1; i <= ntypes; i++) {
+      for (int j = i; j <= ntypes; j++) {
+        setflag[i][j] = 0;
+        if ((map[i] >= 0) && (map[j] >= 0)) {
+          setflag[i][j] = 1;
+          count++;
+        }
+      }
+    }
+
+    if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients");
+
+  }
 
   aenet_pot = new AENET_POT [nelements];
 
-  for (i = 0; i < nelements; i++) {
-    n = strlen(arg[i+3]) + 1;
-    elements[i] = new char[n];
-    strcpy(elements[i],arg[i+3]);
-  }
-
-  std::string tstring = std::string(arg[2]);
-  int aenet_version = atoi(tstring.substr(1,2).c_str());
-
-  std::string file_mask = std::string(arg[3+nelements]);
-  for (i = 0; i < nelements; i++){
-    itype = i + 1;
-    std::string ele_str = std::string(elements[i]);
+  std::string wc = "**";
+  int len = wc.length();
+  for (int i = 0; i < nelements; i++){
+    std::string element = std::string(elements[i]);
     std::string ith_file_name = file_mask;
     if (ith_file_name.find(wc) != std::string::npos) {
-      ith_file_name.replace(ith_file_name.find(wc),len,ele_str);
-    } else
-      ith_file_name = ele_str+"."+ith_file_name;
-      std::string lib_file = utils::get_potential_file_path(ith_file_name.c_str());
-      load_pot_file(aenet_version, i, ith_file_name, nelements, elements);
+      ith_file_name.replace(ith_file_name.find(wc),len,element);
+    } else ith_file_name = element+"."+ith_file_name;
+    load_pot_file(aenet_version, i, ith_file_name, nelements, elements);
   }
-
-  // read args that map atom types to ANN elements
-  // map[i] = which element the Ith atom type is, -1 if not mapped
-
-  for (i = 4 + nelements; i < narg; i++) {
-    m = i - (4+nelements) + 1;
-    for (j = 0; j < nelements; j++)
-      if (strcmp(arg[i],elements[j]) == 0) break;
-    if (j < nelements) map[m] = j;
-    else if (strcmp(arg[i],"NULL") == 0) map[m] = -1;
-    else error->all(FLERR,"Incorrect args for pair coefficients");
-  }
-
-  // clear setflag since coeff() called once with I,J = * *
-
-  n = atom->ntypes;
-  for (int i = 1; i <= n; i++)
-    for (int j = i; j <= n; j++)
-      setflag[i][j] = 0;
-
-  // set setflag i,j for type pairs where both are mapped to elements
-
-  int count = 0;
-  for (int i = 1; i <= n; i++)
-    for (int j = i; j <= n; j++)
-      if (map[i] >= 0 && map[j] >= 0) {
-        setflag[i][j] = 1;
-        count++;
-      }
-  if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients");
 
 }
 
@@ -362,55 +368,73 @@ void PairAENETCC::load_pot_file(int aenet_version, int itype, std::string file_n
     std::vector<int>    nAtomsTot   ;
     std::vector<int>    nStrucs     ;
     std::vector<double> E_info      ;
+    
+    int skip_flag = 0;
 
     if (comm->me == 0) {
 
       std::ifstream fin(file_name, std::ios::in | std::ios::binary );
-      if( !fin ) error->all(FLERR,"aenet/cc: parameter file does not exist");
 
-      nlayers     = read_Fbinary<int>(fin);
-      nnodes_max  = read_Fbinary<int>(fin);
-      Wsize       = read_Fbinary<int>(fin);
-      nvalues     = read_Fbinary<int>(fin);
-      nnodes      = read_Fbinary<int>(fin);
-      f_a         = read_Fbinary<int>(fin);
-      iw          = read_Fbinary<int>(fin);
-      iv          = read_Fbinary<int>(fin);
-      W           = read_Fbinary<double>(fin);
+      if (!fin) {
 
-      description = read_Fbinary<char>(fin);
-      atomtype    = read_Fbinary<char>(fin);
-      nenv        = read_Fbinary<int>(fin);
-      envtypes    = read_Fbinary<char>(fin);
-      Rc_min      = read_Fbinary<double>(fin);
-      Rc_max      = read_Fbinary<double>(fin);
-      sftype      = read_Fbinary<char>(fin);
-      nsf         = read_Fbinary<int>(fin);
-      nsfparam    = read_Fbinary<int>(fin);
-      sf          = read_Fbinary<int>(fin);
-      sfparam     = read_Fbinary<double>(fin);
+        if (Alchemic_on) {
+          skip_flag = 1;
+          if(fin.is_open())fin.close();
+        } else error->all(FLERR,"aenet/cc: parameter file does not exist");
 
-      sfenv       = read_Fbinary<int>(fin);
-      neval       = read_Fbinary<int>(fin);
-      sfval_min   = read_Fbinary<double>(fin);
-      sfval_max   = read_Fbinary<double>(fin);
-      sfval_avg   = read_Fbinary<double>(fin);
-      sfval_cov   = read_Fbinary<double>(fin);
+      } else { 
 
-      file        = read_Fbinary<char>(fin);
-      normalized  = read_Fbinary<int>(fin);
-      E_scale     = read_Fbinary<double>(fin);
-      E_shift     = read_Fbinary<double>(fin);
-      nTypes      = read_Fbinary<int>(fin);
-      typeName    = read_Fbinary<char>(fin);
-      E_atom      = read_Fbinary<double>(fin);
-      nAtomsTot   = read_Fbinary<int>(fin);
-      nStrucs     = read_Fbinary<int>(fin);
-      E_info      = read_Fbinary<double>(fin);
+        nlayers     = read_Fbinary<int>(fin);
+        nnodes_max  = read_Fbinary<int>(fin);
+        Wsize       = read_Fbinary<int>(fin);
+        nvalues     = read_Fbinary<int>(fin);
+        nnodes      = read_Fbinary<int>(fin);
+        f_a         = read_Fbinary<int>(fin);
+        iw          = read_Fbinary<int>(fin);
+        iv          = read_Fbinary<int>(fin);
+        W           = read_Fbinary<double>(fin);
 
-      fin.close();
+        description = read_Fbinary<char>(fin);
+        atomtype    = read_Fbinary<char>(fin);
+        nenv        = read_Fbinary<int>(fin);
+        envtypes    = read_Fbinary<char>(fin);
+        Rc_min      = read_Fbinary<double>(fin);
+        Rc_max      = read_Fbinary<double>(fin);
+        sftype      = read_Fbinary<char>(fin);
+        nsf         = read_Fbinary<int>(fin);
+        nsfparam    = read_Fbinary<int>(fin);
+        sf          = read_Fbinary<int>(fin);
+        sfparam     = read_Fbinary<double>(fin);
+
+        sfenv       = read_Fbinary<int>(fin);
+        neval       = read_Fbinary<int>(fin);
+        sfval_min   = read_Fbinary<double>(fin);
+        sfval_max   = read_Fbinary<double>(fin);
+        sfval_avg   = read_Fbinary<double>(fin);
+        sfval_cov   = read_Fbinary<double>(fin);
+
+        file        = read_Fbinary<char>(fin);
+        normalized  = read_Fbinary<int>(fin);
+        E_scale     = read_Fbinary<double>(fin);
+        E_shift     = read_Fbinary<double>(fin);
+        nTypes      = read_Fbinary<int>(fin);
+        typeName    = read_Fbinary<char>(fin);
+        E_atom      = read_Fbinary<double>(fin);
+        nAtomsTot   = read_Fbinary<int>(fin);
+        nStrucs     = read_Fbinary<int>(fin);
+        E_info      = read_Fbinary<double>(fin);
+
+        fin.close();
+
+      }
 
    }
+
+    MPI_Bcast(&skip_flag, 1, MPI_INT, 0, world);
+    if(skip_flag == 1){
+      aenet_pot[itype].skip_flag_on();
+      return;
+    }
 
     int v_size;
 

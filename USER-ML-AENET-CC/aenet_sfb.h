@@ -25,8 +25,10 @@ class AENET_SFB{
   bool multi=false;
   
   int nenv;
-  int *env_map;
-  int *spin;
+  int *env_map = nullptr;
+  int *spin = nullptr;
+
+  bool allocated = false;
   
   void calc_chebyshev_polynomial(double x, double x0, double x1, int n, double *T){
     
@@ -131,8 +133,10 @@ class AENET_SFB{
   public:
   
   ~AENET_SFB(){
-    delete [] env_map;
-    delete [] spin;    
+    if (allocated){
+      delete [] env_map;
+      delete [] spin;
+    }
   }
   
   void set_version(int version){
@@ -195,6 +199,8 @@ class AENET_SFB{
     
     spin = new int [nenv]();
     env_map = new int [nelements]();
+
+    allocated = true;
     
     if(multi){
       int s = -nenv/2;
