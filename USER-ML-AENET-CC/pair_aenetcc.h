@@ -1,8 +1,8 @@
 
 #ifdef PAIR_CLASS
-
-PairStyle(aenet/cc,PairAENETCC)
-
+// clang-format off
+PairStyle(aenet/cc,PairAENETCC);
+// clang-format on
 #else
 
 #ifndef MLP_PAIR_AENETCC_H
