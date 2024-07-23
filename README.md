@@ -1,4 +1,6 @@
 # Update
+2024/07/23: Add Fe05_zbl.   
+2024/07/23: Rename pair_aenetcc.* pair_aenet_cc.* and add weight_functions.h.  
 2024/03/16: Update pair_aenetcc.* and aenet_sfb.h.  
 
 # Installation
@@ -9,7 +11,7 @@
 git clone https://github.com/HidekiMori-CIT/aenetcc-pre.git
 ```
 
-2. Download and unpack LAMMPS package (currently stable_2Aug2023.tar.gz) from Github to same directory of lammps-extend:  
+2. Download and unpack LAMMPS package (currently stable_2Aug2023.tar.gz) from Github to same directory of aenetcc-pre:  
 ``` 
 wget https://github.com/lammps/lammps/archive/refs/tags/stable_2Aug2023.tar.gz
 tar -xvzf stable_2Aug2023.tar.gz
