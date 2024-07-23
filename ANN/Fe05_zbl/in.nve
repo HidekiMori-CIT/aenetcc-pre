@@ -1,0 +1,41 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+
+variable        a0 equal 2.835
+variable        Ln equal 5
+
+lattice         bcc ${a0}
+region          region1 block 0 ${Ln} 0 ${Ln} 0 ${Ln} units lattice
+create_box      1 region1
+
+variable        z0 equal ${a0}*0.6
+create_atoms    1 box
+create_atoms    1 single 0 0 ${z0} units box
+
+pair_style hybrid/overlay aenet/cc Econnect 0.7 1.5 zbl 0.7 1.5
+pair_coeff      * * aenet/cc v03 Fe 10sw-10sw.nn Fe
+pair_coeff      * * zbl 26.0 26.0
+mass            * 55.845
+
+velocity        all create 100 12345 dist gaussian
+
+run 0
+
+variable        etmp equal etotal
+variable        e0 equal ${etmp}
+
+reset_timestep  0
+timestep        0.000005
+
+variable        dH equal etotal-${e0}
+
+thermo_style    custom step etotal v_dH pe ke temp press
+thermo          100
+
+#dump            d2 all cfg 50000 *.cfg mass type xs ys zs fx fy fz
+#dump_modify     d2 element Fe
+
+fix             f1 all nve
+run             10000
+

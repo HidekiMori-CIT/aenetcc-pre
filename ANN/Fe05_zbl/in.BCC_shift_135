@@ -1,0 +1,60 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+
+variable        a0 equal 2.835
+variable        Ln equal 5
+variable        Na equal ${Ln}*${Ln}*${Ln}*2
+variable        Nd equal 125
+variable        dd0 equal 0.005
+variable        dd1 equal ${dd0}*1
+variable        dd3 equal ${dd0}*3
+variable        dd5 equal ${dd0}*5
+
+lattice         bcc ${a0}
+region          region1 block 0 ${Ln} 0 ${Ln} 0 ${Ln} units lattice
+create_box      2 region1
+
+create_atoms    1 box
+set atom 1 type 2
+group move_atom type 2
+
+pair_style hybrid/overlay aenet/cc Econnect 0.7 1.5 zbl 0.7 1.5
+pair_coeff      * * aenet/cc v03 Fe 10sw-10sw.nn Fe Fe
+pair_coeff      * * zbl 26.0 26.0
+
+mass            * 55.845
+
+#dump            d1 all cfg 1000 *.cfg mass type xs ys zs
+#dump_modify     d1 element Fe Fe
+
+run 0
+
+variable        etmp equal pe
+variable        e0 equal ${etmp}
+
+variable        F equal 0.0 
+variable        D equal 0.0
+print "#dr(unit AA) Ef(unit eV)" file BCC_shift_135.dat
+print "$D $F" append BCC_shift_135.dat
+
+label       loop
+variable    a uloop ${Nd}
+
+displace_atoms  move_atom move -${dd1} -${dd3} -${dd5} units box
+
+#dump            d2 all cfg 1000 shift.*.${a}.cfg mass type xs ys zs
+#dump_modify     d2 element Fe Fe
+
+run 0
+
+#undump d2
+
+variable        F equal pe-${e0}
+variable        D equal sqrt(${dd1}*${dd1}+${dd3}*${dd3}+${dd5}*${dd5})*${a}
+print "$D $F" append BCC_shift_135.dat
+
+next        a
+jump        in.BCC_shift_135 loop
+label       break
+variable    a delete

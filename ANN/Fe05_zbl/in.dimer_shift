@@ -1,0 +1,60 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+
+variable        a0 equal 2.835
+variable        Ln equal 5
+variable        Na equal ${Ln}*${Ln}*${Ln}*2
+variable        dd equal 0.05
+variable        Nd equal 105
+variable        z0 equal 5.5
+variable        dz equal ${dd}
+
+lattice         bcc ${a0}
+region          region1 block 0 ${Ln} 0 ${Ln} 0 ${Ln} units lattice
+create_box      2 region1
+
+create_atoms    1 single 0 0 0 units box
+create_atoms    2 single 0 0 ${z0} units box
+
+group move_atom type 2
+
+
+pair_style hybrid/overlay aenet/cc Eshifted Econnect 0.7 1.5 zbl 0.7 1.5
+pair_coeff      * * aenet/cc v03 10sw-10sw.nn Fe Fe
+pair_coeff      * * zbl 26.0 26.0
+mass            * 55.845
+
+#dump            d1 all cfg 1000 *.cfg mass type xs ys zs
+#dump_modify     d1 element Fe Fe
+
+run 0
+
+variable      etmp equal pe
+variable      e0 equal ${etmp}
+
+print "#dr(unit AA) Ef(unit eV)" file Dimer_shift.dat
+variable        F equal pe-${e0}
+variable        A equal ${z0}
+print "$A $F" append Dimer_shift.dat
+
+label       loop
+variable    a uloop ${Nd}
+
+displace_atoms  move_atom move 0 0 -${dz} units box
+
+#dump            d2 all cfg 1000 shift.*.${a}.cfg mass type xs ys zs
+#dump_modify     d2 element Fe Fe
+
+run 0
+
+#undump d2
+
+variable        F equal pe-${e0}
+variable        D equal (${z0}-${dz}*${a})
+print "$D $F" append Dimer_shift.dat
+
+next        a
+jump        in.dimer_shift loop
+label       break
+variable    a delete
