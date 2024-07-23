@@ -21,10 +21,7 @@ std::vector<T> read_Fbinary(std::ifstream &fin){
     return data;
 }
 
-
 class AENET_POT {
-  
-  std::string my_atomtype;
   
   double Escale;
   double Eshift;
@@ -35,6 +32,19 @@ class AENET_POT {
   AENET_SFB sfb;
   
   bool skip_flag = false;
+
+  std::string vc2s(std::vector<char> ctmp, int i, int j){
+    std::string stmp; 
+    if(i == 0){
+      stmp = std::string(ctmp.begin(),ctmp.end());
+    }else {
+      stmp = std::string(ctmp.begin()+i*j,ctmp.begin()+i*(j+1));
+    }
+    stmp = stmp.erase(stmp.find_last_not_of(" ") + 1);
+    stmp = stmp.erase(0,stmp.find_first_not_of(" "));
+    return stmp;
+  }
+
 
   public:
   
@@ -47,14 +57,13 @@ class AENET_POT {
     int aenet_version,
     std::vector<char> atomtype,
     std::vector<int> nnodes,std::vector<int> f_a, std::vector<double> W,
-    int nelements, char** elements,
+    std::vector<std::string> elements,
     int nenv, std::vector<char> envtypes,
     std::vector<double> sfparam,
     std::vector<double> sfval_avg, std::vector<double> sfval_cov,
     double scale, double shift, std::vector<double> Ea,
     int nTypes,std::vector<char> typeName){
     
-    my_atomtype = std::string(atomtype.begin(),atomtype.end());
     
     std::vector<double> Wb(W.size());
     
@@ -71,26 +80,17 @@ class AENET_POT {
     
     net.set_ann(nnodes, f_a, Wb);
     
-    
-    if(nenv > 1)sfb.set_multi();
-    
-    std::string etype;
+
     int elen = envtypes.size()/nenv;
-    std::vector<int> lmap(nelements);
-    for (int i = 0; i < nelements; i++) {
+    std::vector<int> lmap(elements.size());
+    for (int i = 0; i < elements.size(); i++) {
       lmap[i] = -1;
       for (int j = 0; j < nenv; j++){
-        etype = std::string(envtypes.begin()+elen*j,envtypes.begin()+elen*(j+1));
-        etype = etype.erase(etype.find_last_not_of(" ") + 1);
-        etype = etype.erase(0,etype.find_first_not_of(" "));
-        if (strcmp(etype.c_str(),elements[i]) == 0){
-          lmap[i] = j;
-          break;
-        }
+        if (elements[i] == vc2s(envtypes,elen,j)){lmap[i] = j;break;}
       }
     }
-    
-    sfb.set_envtype(nenv, nelements, lmap);
+
+    sfb.set_envtype(nenv, elements.size(), lmap);
     
     
     int nGr   = sfparam[1]+1;
@@ -121,15 +121,11 @@ class AENET_POT {
 
     Escale = 1.0/scale;
     Eshift = shift;
-    
-    std::string ithtype;
+   
+    auto my_type = vc2s(atomtype,0,0);
     int tlen = typeName.size()/nTypes;
     for (int i = 0; i < nTypes; i++){
-      ithtype = std::string(typeName.begin()+tlen*i,typeName.begin()+tlen*(i+1));
-      if (my_atomtype == ithtype){
-        Eatom = Ea[i];
-        break;
-      }
+      if (my_type == vc2s(typeName,tlen,i)){Eatom = Ea[i];break;}
     }
     
     
@@ -153,6 +149,8 @@ class AENET_POT {
   double get_Rc_max(){return sfb.get_Rc_max();}
   
   double get_Einf(){return Einf;}
+  double get_Eshift(){return Eshift;}
+  double get_Eatom(){return Eatom;}
   
   void compute(int jnum, double *x, double *rsq, int *type, double &E, double *f){
     

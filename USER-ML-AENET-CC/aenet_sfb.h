@@ -193,25 +193,25 @@ class AENET_SFB{
     
   }
   
-  void set_envtype(int n, int nelements, std::vector<int> lmap){
-    
-    nenv = n;
-    
-    spin = new int [nenv]();
-    env_map = new int [nelements]();
+  void set_envtype(int nenv, int nelements, std::vector<int> lmap){
+
+    spin = new int [nenv]{};
+    env_map = new int [nelements]{};
 
     allocated = true;
     
-    if(multi){
+    for (int i = 0; i < nelements; i++) {env_map[i] = lmap[i];}
+
+    if(nenv > 1){
+      multi = true;
       int s = -nenv/2;
       for (int i = 0; i < nenv; i++){
         if (s == 0 && nenv%2 == 0){s++;}
         spin[i] = s;
         s++;
       }
-      
-      for (int i = 0; i < nelements; i++) {env_map[i] = lmap[i];}
     }
+      
   }
   
   int get_nG(){return nGtot;}
@@ -228,37 +228,37 @@ class AENET_SFB{
     double *dGadxj = new double [nGa*3]{};
     double *dGadxk = new double [nGa*3]{};
    
+    double *r      = new double [jnum]{};
+    for (int j = 0; j < jnum; j++)r[j] = sqrt(rsq[j]);
 
     //j-loop start
     for (int j = 0; j < jnum; j++){
       
-      double xj[3], dr_dxj[3];
+      if (r[j] <= Rc_r){
 
-      double *x_j = &x[3*j];
-      for(int i = 0; i < 3; i++)xj[i] = x_j[i];
-      double rsqj = rsq[j];
-      double rj = sqrt(rsqj);
-      double rinvj = 1.0/rj;
-      for(int i = 0; i < 3; i++) dr_dxj[i] = xj[i]*rinvj;
-      
-      if (rsqj <= Rc_r_sq){
+        double xj[3];
+        double *x_j = &x[3*j];
+        for(int i = 0; i < 3; i++)xj[i] = x_j[i];
+        double rj = r[j];
         
         compute_sfb_rad(rj, Rc_r, nGr, Gr, dGdr);
         double fcj,dfcj;
         f_c(fctype_r, rj, Rc_r, h_r, fcj, dfcj);
         
+        double dr_dxj[3];
+        double rinvj = 1.0/rj;
+        for(int i = 0; i < 3; i++) dr_dxj[i] = xj[i]*rinvj;
+
         for (int n = 0; n < nGr; n++){
           double dGdfc = fcj*dGdr[n] + dfcj*Gr[n];
           double *dGrdx_j = &dGrdxj[n*3];
           for(int i = 0; i < 3; i++) dGrdx_j[i] = dGdfc*dr_dxj[i];
         }
         
-        int nstart = 0;
-        
-        double *Gj = &Gall[nstart];
+        double *Gj = &Gall[0];
         for (int n = 0; n < nGr; n++) Gj[n] += fcj*Gr[n];
         
-        double *dGdxj = &dGdx[(j*nGtot + nstart)*3];
+        double *dGdxj = &dGdx[(j*nGtot)*3];
         for(int ni = 0; ni < nGr*3; ni++)dGdxj[ni] += dGrdxj[ni];
         
         if (multi) if(env_map[type[j]] >= 0){
@@ -278,38 +278,45 @@ class AENET_SFB{
         
       }
 
-      if (rsqj > Rc_a_sq)continue;
+      if (r[j] > Rc_a)continue;
       
       //k-loop start 
       for (int k = j+1; k < jnum; k++){
       
-        double rsqk = rsq[k];
-        if (rsqk > Rc_a_sq)continue;
+        if (r[k] > Rc_a)continue;
         
-        double xk[3], dr_dxk[3];
-
+        double xj[3], xk[3];
+        double *x_j = &x[3*j];
+        for(int i = 0; i < 3; i++)xj[i] = x_j[i];
         double *x_k = &x[3*k];
-        for(int i = 0; i < 3; i++) xk[i] = x_k[i];
-        double rk = sqrt(rsqk);
-        double rinvk = 1.0/rk;
-        for(int i = 0; i < 3; i++) dr_dxk[i] = xk[i]*rinvk;
+        for(int i = 0; i < 3; i++)xk[i] = x_k[i];
 
+        double rj = r[j];
+        double rk = r[k];
+        double rinvj = 1.0/rj;
+        double rinvk = 1.0/rk;
         double rinvjk = rinvj*rinvk;
         double cos_jk = (xj[0]*xk[0] + xj[1]*xk[1] + xj[2]*xk[2]) * rinvjk;
         
         compute_sfb_ang(aenet_ver,cos_jk, nGa, Ga, dGdcos);
         double fcj,dfcj,fck,dfck;
         f_c(fctype_a, rj, Rc_a, h_a, fcj, dfcj);
-        f_c(fctype_a, rk, Rc_a, h_a, fck, dfck);
-                
+        f_c(fctype_a, rk, Rc_a, h_a, fck, dfck);                
         double fcjk = fcj*fck;
         
+        double *Gjk = &Gall[nGr];
+        for (int n = 0; n < nGa; n++) Gjk[n] += fcjk*Ga[n];
+        
         double dcos_dxj[3], dcos_dxk[3];
-        double rinvsqj = 1.0/rsqj;
-        double rinvsqk = 1.0/rsqk;
+        double rinvsqj = 1.0/rsq[j];
+        double rinvsqk = 1.0/rsq[k];
         for(int i = 0; i < 3; i++) dcos_dxj[i] = -cos_jk*xj[i]*rinvsqj + xk[i]*rinvjk;
         for(int i = 0; i < 3; i++) dcos_dxk[i] = -cos_jk*xk[i]*rinvsqk + xj[i]*rinvjk;
-        
+
+        double dr_dxj[3],dr_dxk[3];
+        for(int i = 0; i < 3; i++) dr_dxj[i] = xj[i]*rinvj;
+        for(int i = 0; i < 3; i++) dr_dxk[i] = xk[i]*rinvk;
+
         for (int n = 0; n < nGa; n++){
           double dG_fc  =  fcj*fck*dGdcos[n];
           double G_dfcj = dfcj*fck*Ga[n];
@@ -320,15 +327,10 @@ class AENET_SFB{
           for(int i = 0; i < 3; i++) dGadx_k[i] = dG_fc*dcos_dxk[i] + G_dfck*dr_dxk[i];
         }
         
-        int nstart = nGr;
-        
-        double *Gjk = &Gall[nstart];
-        for (int n = 0; n < nGa; n++) Gjk[n] += fcjk*Ga[n];
-        
-        double *dGdxj = &dGdx[(j*nGtot + nstart)*3];
+        double *dGdxj = &dGdx[(j*nGtot + nGr)*3];
         for (int ni = 0; ni < nGa*3; ni++)dGdxj[ni] += dGadxj[ni];
         
-        double *dGdxk = &dGdx[(k*nGtot + nstart)*3];
+        double *dGdxk = &dGdx[(k*nGtot + nGr)*3];
         for (int ni = 0; ni < nGa*3; ni++)dGdxk[ni] += dGadxk[ni];
         
         if (multi) if(env_map[type[j]] >= 0 && env_map[type[k]] >= 0){
@@ -361,6 +363,7 @@ class AENET_SFB{
     delete [] dGrdxj;
     delete [] dGadxj;
     delete [] dGadxk;
+    delete [] r;
   
   }
 
