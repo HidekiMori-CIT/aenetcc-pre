@@ -24,7 +24,7 @@ class PairAENET_CC : public Pair {
    bool Eshifted_on = false;
    bool Alchemic_on = false;
 
-   bool Econnect_on;
+   bool Econnect_on = false;
    Weight_Functions EW_Function;
    
  public:
