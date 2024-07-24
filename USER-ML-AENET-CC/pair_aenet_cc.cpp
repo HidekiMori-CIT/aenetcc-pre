@@ -37,8 +37,7 @@ PairAENET_CC::PairAENET_CC(LAMMPS *lmp) : Pair(lmp)
 
   Eshifted_on = false;
   Alchemic_on = false;
-
-
+  Econnect_on = false;
 
 }
 
