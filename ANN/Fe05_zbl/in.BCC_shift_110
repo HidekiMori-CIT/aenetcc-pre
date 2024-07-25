@@ -38,7 +38,7 @@ print "#dr(unit AA) Ef(unit eV)" file BCC_shift_110.dat
 print "$D $F" append BCC_shift_110.dat
 
 label       loop
-variable    a uloop ${Nd}
+variable    a loop ${Nd}
 
 displace_atoms  move_atom move -${dd1} -${dd2} 0 units box
 
