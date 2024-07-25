@@ -39,7 +39,7 @@ variable        A equal ${z0}
 print "$A $F" append Dimer_shift.dat
 
 label       loop
-variable    a uloop ${Nd}
+variable    a loop ${Nd}
 
 displace_atoms  move_atom move 0 0 -${dz} units box
 
