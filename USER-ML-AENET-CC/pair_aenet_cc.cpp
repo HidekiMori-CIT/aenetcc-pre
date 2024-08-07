@@ -396,7 +396,7 @@ int PairAENET_CC::load_pot_file(int aenet_version, int itype, std::string file_n
         if (Alchemic_on) {
           skip_flag = 1;
           if(fin.is_open())fin.close();
-        } else error->all(FLERR,"aenet/cc: parameter file does not exist");
+        } else error->one(FLERR,"aenet/cc: parameter file does not exist");
 
       } else { 
 
